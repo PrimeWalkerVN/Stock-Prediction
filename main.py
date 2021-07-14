@@ -4,33 +4,48 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import datetime
+from datetime import time
 import yfinance as yf # https://pypi.org/project/yfinance/
 from ta.volatility import BollingerBands
 from ta.trend import MACD
 from ta.momentum import RSIIndicator
+from ta.momentum import ROCIndicator
 from io import BytesIO
-import xlsxwriter
 import base64
 
 ###########
 # sidebar #
 ###########
-option = st.sidebar.selectbox('Select one symbol', ( 'AAPL', 'MSFT',"SPY",'WMT','NFLX'))
+user_input = st.sidebar.text_input("Input stock", "AAPL")
 today = datetime.date.today()
 before = today - datetime.timedelta(days=700)
 start_date = st.sidebar.date_input('Start date', before)
 end_date = st.sidebar.date_input('End date', today)
+end_time = st.sidebar.slider("End time:", value=(time(7, 00)))
+
 if start_date < end_date:
-    st.sidebar.success('Start date: `%s`\n\nEnd date:`%s`' % (start_date, end_date))
+    st.sidebar.success('Start date: `%s`\n\nEnd date time: `%s`' % (
+        start_date, datetime.datetime.combine(end_date, end_time)))
 else:
     st.sidebar.error('Error: End date must fall after start date.')
+
+###########
+# Train model #
+#############
+
+
+# Code train model here
+
 
 ##############
 # Stock data #
 ##############
 
 # Download data
-df = yf.download(option,start= start_date,end= end_date, progress=False)
+df = yf.download(user_input,start= start_date,end= datetime.datetime.combine(end_date, end_time), progress=False)
+
+# Price of change 
+roc = ROCIndicator(df['Close']).roc()
 
 # Bollinger Bands
 indicator_bb = BollingerBands(df['Close'])
@@ -48,6 +63,10 @@ rsi = RSIIndicator(df['Close']).rsi()
 ###################
 # Set up main app #
 ###################
+
+# Plot ROC
+st.write('Stock Rate Of Change')
+st.line_chart(roc)
 
 # Plot the prices and the bolinger bands
 st.write('Stock Bollinger Bands')
