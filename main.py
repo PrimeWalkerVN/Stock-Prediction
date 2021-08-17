@@ -36,11 +36,10 @@ today = datetime.date.today()
 before = today - datetime.timedelta(days=700)
 start_date = st.sidebar.date_input('Start date', before)
 end_date = st.sidebar.date_input('End date', today)
-end_time = st.sidebar.slider("End time:", value=(time(7, 00)))
 
 if start_date < end_date:
-    st.sidebar.success('Start date: `%s`\n\nEnd date time: `%s`' % (
-        start_date, datetime.datetime.combine(end_date, end_time)))
+    st.sidebar.success('Start date: `%s`\n\nEnd date: `%s`' % (
+        start_date, end_date))
 else:
     st.sidebar.error('Error: End date must fall after start date.')
 
@@ -83,6 +82,7 @@ def create_train_test_LSTM(df, epoch, b_s, ticker_name, indicator):
 
     #Testing Data
     test_data = scaled_data[training_data_len - 60:, :]
+    test_dataset = df_filtered.tail(math.ceil(len(dataset) * .3))
 
     x_test_data = []
     y_test_data = dataset[training_data_len:, :]
@@ -109,7 +109,6 @@ def create_train_test_LSTM(df, epoch, b_s, ticker_name, indicator):
               batch_size=int(b_s), epochs=int(epoch))
     st.success("Your Model is Trained Succesfully!")
     st.markdown('')
-    st.write("Predicted vs Actual Results for LSTM")
     st.write("Stock Prediction on Test Data for - ", ticker_name)
 
     predictions = model.predict(x_test_data)
@@ -133,20 +132,42 @@ def create_train_test_LSTM(df, epoch, b_s, ticker_name, indicator):
     st.pyplot()
 
 
+    # predict next day
+    dataset_test = test_dataset[indicator][len(test_dataset)-60:len(test_dataset)].to_numpy()
+    dataset_test = np.array(dataset_test)
+
+    inputs = dataset_test
+    inputs = inputs.reshape(-1,1)
+    inputs = scaler.transform(inputs)
+    
+    X_test = []
+    no_of_sample = len(dataset_test)
+
+    # Get last data
+    X_test.append(inputs[no_of_sample - 60:no_of_sample, 0])
+    X_test = np.array(X_test)
+    X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[1], 1))
+
+    # Predict price
+    predicted_stock_price = model.predict(X_test)
+
+    # Convert to price
+    predicted_stock_price = scaler.inverse_transform(predicted_stock_price)
+
+    # Add date
+    dataset_test = np.append(dataset_test, predicted_stock_price[0], axis=0)
+    inputs = dataset_test
+    inputs = inputs.reshape(-1, 1)
+    inputs = scaler.transform(inputs)
+
+    # print('Stock price next day', predicted_stock_price[0][0])
+    st.write('Stock ', indicator, ' next day value:', predicted_stock_price[0][0])
+
+
 
 # #For XGBoost Model ------------------------------
 
 def create_train_test_XGB(df, indicator):
-    n_estimators = 100             # Number of boosted trees to fit. default = 100
-    max_depth = 10                 # Maximum tree depth for base learners. default = 3
-    learning_rate = 0.2            # Boosting learning rate (xgb’s “eta”). default = 0.1
-    min_child_weight = 1           # Minimum sum of instance weight(hessian) needed in a child. default = 1
-    subsample = 1                  # Subsample ratio of the training instance. default = 1
-    colsample_bytree = 1           # Subsample ratio of columns when constructing each tree. default = 1
-    colsample_bylevel = 1          # Subsample ratio of columns for each split, in each level. default = 1
-    gamma = 2                      # Minimum loss reduction required to make a further partition on a leaf node of the tree. default=0
-
-    model_seed = 1042
     
     from xgboost import XGBRegressor
     # xgb = XGBClassifier()
@@ -164,6 +185,7 @@ def create_train_test_XGB(df, indicator):
     df_Stock['Diff'] = df_Stock['Close'] - df_Stock['Open']
     df_Stock['High-low'] = df_Stock['High'] - df_Stock['Low']
     
+    test_dataset = df_Stock.tail(math.ceil(len(df_Stock) * .1))
     st.write('Training Selected Machine Learning models for ', user_input)
     st.markdown('Your **_final_ _dataframe_ _for_ Training** ')
     st.write(df_Stock)
@@ -180,32 +202,21 @@ def create_train_test_XGB(df, indicator):
 
 
     data_len = df_Stock.shape[0]
-    print('Historical Stock Data length is - ', str(data_len))
 
     #create a chronological split for train and testing
     train_split = int(data_len * 0.9)
-    print('Training Set length - ', str(train_split))
 
-    val_split = train_split + int(data_len * 0.08)
-    print('Validation Set length - ', str(int(data_len * 0.1)))
-
-    print('Test Set length - ', str(int(data_len * 0.02)))
+    val_split = train_split + int(data_len * 0.1)
 
     # Splitting features and target into train, validation and test samples 
 
     X_train, X_val, X_test = features[:train_split], features[train_split:val_split], features[val_split:]
     Y_train, Y_val, Y_test = target[:train_split], target[train_split:val_split], target[val_split:]
 
-    #print shape of samples
-    print(X_train.shape, X_val.shape, X_test.shape)
-    print(Y_train.shape, Y_val.shape, Y_test.shape)
-
     #######
     xgb.fit(X_train, Y_train)
 
-    # Y_train_pred = xgb.predict(X_train)
     Y_val_pred = xgb.predict(X_val)
-    # Y_test_pred = xgb.predict(X_test)
 
     # # update_metrics_tracker()
 
@@ -216,28 +227,30 @@ def create_train_test_XGB(df, indicator):
     plt.show()
     
     # self.plot_prediction()
-    print('Predicted vs Actual for ', user_input)
     st.write('Predicted vs Actual for ', user_input)
     df_pred = pd.DataFrame(Y_val.values, columns=['Actual'], index=Y_val.index)
     df_pred['Predicted'] = Y_val_pred
     df_pred['Date'] = pd.to_datetime(df['Date'],format='%Y-%m-%d')
     df_pred = df_pred.reset_index()
     
-    # df_pred.loc[:, 'Date'] = pd.to_datetime(df_pred['Date'],format='%Y-%m-%d')
-    # print('Stock Prediction on Test Data - ',df_pred)
     st.write('Stock Prediction on Test Data for - ',user_input)
     st.write(df_pred)
 
-    print('Plotting Actual vs Predicted for - ', user_input)
     st.write('Plotting Actual vs Predicted for - ', user_input)
     fig = df_pred[['Actual', 'Predicted']].plot()
     df_pred.rename(columns={'Date':'index'}).set_index('index')
     plt.title('Actual vs Predicted Stock Prices')
-    #plt.show()
-    #st.write(fig)
     
     st.set_option('deprecation.showPyplotGlobalUse', False)
     st.pyplot()
+
+    # predict next day
+    # Predict price
+    predicted_stock_price = xgb.predict(X_val)
+
+    # Convert to price
+    st.write('Stock price next day', predicted_stock_price[len(predicted_stock_price)-1])
+
 
 
 ##############
@@ -245,13 +258,11 @@ def create_train_test_XGB(df, indicator):
 ##############
 
 # Download data
-df = yf.download(user_input,start= start_date,end= datetime.datetime.combine(end_date, end_time), progress=False)
+df = yf.download(user_input, start = start_date, end= end_date, progress=False)
 df = df.reset_index()
 df['Date'] = pd.to_datetime(df['Date']).dt.date
 df['ROC'] = ((df['Close'] - df['Close'].shift(10)) / (df['Close'].shift(10)))*100
 df = df.dropna()
-st.dataframe(df)
-
 
 if choices == 'LSTM':
     create_train_test_LSTM(df, 300, 1024, user_input, indicator)
