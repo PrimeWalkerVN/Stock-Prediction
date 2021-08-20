@@ -1,31 +1,22 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-import streamlit as st
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import datetime
-from datetime import time
-import time as timewithsleep
-import yfinance as yf # https://pypi.org/project/yfinance/
-from ta.volatility import BollingerBands
-from ta.trend import MACD
-from ta.momentum import RSIIndicator
-from ta.momentum import ROCIndicator
-from io import BytesIO
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 import base64
-from sklearn.preprocessing import MinMaxScaler
-from keras.models import Sequential
-from keras.layers import Dense, LSTM
-import math
-import xgboost as xgb
-import plotly.graph_objects as go
+import datetime
+from io import BytesIO
 from typing import TypeVar
-from xgboost import XGBClassifier
-import plotly.express as px
+
+import pandas as pd
+import streamlit as st
+import xgboost as xgb
+import yfinance as yf  # https://pypi.org/project/yfinance/
+from ta.momentum import ROCIndicator, RSIIndicator
+from ta.trend import MACD
+from ta.volatility import BollingerBands
+
 import lstm
 import xgb
+
 T = TypeVar('T')
 
 ###########
