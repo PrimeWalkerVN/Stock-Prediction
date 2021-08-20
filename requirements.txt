@@ -8,3 +8,5 @@ streamlit==0.84.1
 keras==2.6.0
 ta==0.7.0
 scikit_learn==0.24.2
+tensorflow==2.6.0
+xlsxwriter==1.4.4

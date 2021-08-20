@@ -1,5 +1,5 @@
 # Stock-Prediction
-
+## Link deloy heroku: [here](https://stock-prediction-demo.herokuapp.com/)
 # Use pip3 to install modules
 ```
     pip3 install streamlit yfinance mapplotlib ta xlsxwriter fbprophet tensorflow scikit-learn
