@@ -54,76 +54,91 @@ indicator = st.sidebar.selectbox("Select Indicator", indicators)
 ##############
 
 # Download data
-df = yf.download(user_input, start = start_date, end= end_date, progress=False)
-df = df.reset_index()
-df['Date'] = pd.to_datetime(df['Date']).dt.date
-df['ROC'] = ((df['Close'] - df['Close'].shift(10)) / (df['Close'].shift(10)))*100
-df = df.dropna()
+exist = True
+df = ""
+if  user_input == "":
+    st.write("Please input the valid stock!")
+    exist = False
+try:
+    df = yf.download(user_input, start = start_date, end= end_date, progress=False)
+except:
+    st.write("Can't find stock data with your input!")
+    exist = False
 
-if choices == 'LSTM':
-    lstm.create_train_test_LSTM(df, 300, 1024, user_input, indicator)
-elif choices == 'XGBoost':
-    xgb.create_train_test_XGB(df, indicator, user_input)
+if len(df) == 0:
+    st.write("Can't find stock data with your input!")
+    exist = False;
 
-df = df.rename(columns={'Date':'index'}).set_index('index')
-# Price of change 
-roc = ROCIndicator(df['Close']).roc()
+if exist == True:
+    df = df.reset_index()
+    df['Date'] = pd.to_datetime(df['Date']).dt.date
+    df['ROC'] = ((df['Close'] - df['Close'].shift(10)) / (df['Close'].shift(10)))*100
+    df = df.dropna()
 
-# Bollinger Bands
-indicator_bb = BollingerBands(df['Close'])
-bb = df
-bb['bb_h'] = indicator_bb.bollinger_hband()
-bb['bb_l'] = indicator_bb.bollinger_lband()
-bb = bb[['Close','bb_h','bb_l']]
+    if choices == 'LSTM':
+        lstm.create_train_test_LSTM(df, 300, 1024, user_input, indicator)
+    elif choices == 'XGBoost':
+        xgb.create_train_test_XGB(df, indicator, user_input)
 
-# Moving Average Convergence Divergence
-macd = MACD(df['Close']).macd()
+    df = df.rename(columns={'Date':'index'}).set_index('index')
+    # Price of change 
+    roc = ROCIndicator(df['Close']).roc()
 
-# Resistence Strength Indicator
-rsi = RSIIndicator(df['Close']).rsi()
+    # Bollinger Bands
+    indicator_bb = BollingerBands(df['Close'])
+    bb = df
+    bb['bb_h'] = indicator_bb.bollinger_hband()
+    bb['bb_l'] = indicator_bb.bollinger_lband()
+    bb = bb[['Close','bb_h','bb_l']]
 
-###################
-# Set up main app #
-###################
+    # Moving Average Convergence Divergence
+    macd = MACD(df['Close']).macd()
 
-# Plot ROC
-st.write('Stock Rate Of Change')
-st.line_chart(roc)
+    # Resistence Strength Indicator
+    rsi = RSIIndicator(df['Close']).rsi()
 
-# Plot the prices and the bolinger bands
-st.write('Stock Bollinger Bands')
-st.line_chart(bb)
+    ###################
+    # Set up main app #
+    ###################
 
-progress_bar = st.progress(0)
+    # Plot ROC
+    st.write('Stock Rate Of Change')
+    st.line_chart(roc)
+
+    # Plot the prices and the bolinger bands
+    st.write('Stock Bollinger Bands')
+    st.line_chart(bb)
+
+    progress_bar = st.progress(0)
 
 
-# Plot MACD
-st.write('Stock Moving Average Convergence Divergence (MACD)')
-st.area_chart(macd)
+    # Plot MACD
+    st.write('Stock Moving Average Convergence Divergence (MACD)')
+    st.area_chart(macd)
 
-# Plot RSI
-st.write('Stock RSI ')
-st.line_chart(rsi)
+    # Plot RSI
+    st.write('Stock RSI ')
+    st.line_chart(rsi)
 
-# Data of recent days
-st.write('Recent data ')
-st.dataframe(df.tail(10))
+    # Data of recent days
+    st.write('Recent data ')
+    st.dataframe(df.tail(10))
 
-def to_excel(df):
-    output = BytesIO()
-    writer = pd.ExcelWriter(output, engine='xlsxwriter')
-    df.to_excel(writer, sheet_name='Sheet1')
-    writer.save()
-    processed_data = output.getvalue()
-    return processed_data
+    def to_excel(df):
+        output = BytesIO()
+        writer = pd.ExcelWriter(output, engine='xlsxwriter')
+        df.to_excel(writer, sheet_name='Sheet1')
+        writer.save()
+        processed_data = output.getvalue()
+        return processed_data
 
-def get_table_download_link(df):
-    """Generates a link allowing the data in a given panda dataframe to be downloaded
-    in:  dataframe
-    out: href string
-    """
-    val = to_excel(df)
-    b64 = base64.b64encode(val)  # val looks like b'...'
-    return f'<a href="data:application/octet-stream;base64,{b64.decode()}" download="download.xlsx">Download excel file</a>' # decode b'abc' => abc
+    def get_table_download_link(df):
+        """Generates a link allowing the data in a given panda dataframe to be downloaded
+        in:  dataframe
+        out: href string
+        """
+        val = to_excel(df)
+        b64 = base64.b64encode(val)  # val looks like b'...'
+        return f'<a href="data:application/octet-stream;base64,{b64.decode()}" download="download.xlsx">Download excel file</a>' # decode b'abc' => abc
 
-st.markdown(get_table_download_link(df), unsafe_allow_html=True)
+    st.markdown(get_table_download_link(df), unsafe_allow_html=True)
