@@ -8,3 +8,4 @@ yfinance==0.1.63
 matplotlib==3.4.2
 scikit_learn==0.24.2
 xlsxwriter==1.4.4
+tensorflow==2.6.0
